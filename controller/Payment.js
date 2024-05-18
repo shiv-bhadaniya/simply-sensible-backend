@@ -3,6 +3,9 @@ const router = express.Router();
 
 import Stripe from "stripe";
 
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 const stripe = Stripe(process.env.STRIPE_API_KEY)
 
 export const paymentProcess = async (req, res) => {
@@ -20,7 +23,7 @@ export const paymentProcess = async (req, res) => {
 export const sendStripAPIKey = async (req, res) => {
 
 
-    res.status(200).json({ stripeApiKey: "pk_test_51MNE0xSFQdCBkgTczfMehE6NOHpYmjk4n9BwCzWYDXVO5lVYpjEoXaiFDBndrmoa9VWU3Q6Kr3IRQhxIiVBJc0yX00Z0wHXvFx" });
+    res.status(200).json({ stripeApiKey: process.env.STRIPE_API_KEY });
 
 }
 
