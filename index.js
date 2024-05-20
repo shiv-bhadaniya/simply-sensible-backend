@@ -14,13 +14,11 @@ import { Check } from "./util/envCheck.js";
 const app = express();
 app.use(cookieParser());
 
-const corsOption = {
-  origin: process.env.FRONTEND_HOST,
-  corsOptions: true,
-  origin: true, //included origin as true
-  credentials: true, //included credentials as true
+const corsOptions = {
+  origin: [process.env.FRONTEND_HOST, "http://localhost:3000"],
+  credentials: true,
 };
-app.use(cors(corsOption));
+app.use(cors(corsOptions));
 
 app.use(bodyParser.urlencoded({ extended: true, limit: "50mb" }));
 app.use(bodyParser.json({ limit: "50mb" }));
