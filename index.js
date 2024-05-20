@@ -15,6 +15,7 @@ const app = express();
 app.use(cookieParser());
 
 const corsOption = {
+  origin: process.env.FRONTEND_HOST,
   corsOptions: true,
   origin: true, //included origin as true
   credentials: true, //included credentials as true
