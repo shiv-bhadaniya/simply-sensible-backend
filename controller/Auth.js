@@ -33,8 +33,8 @@ export const signin = async (req, res) => {
 
     const options = {
       httpOnly: false,
-      // sameSite: "None",
-      // secure: true,
+      sameSite: "None",
+      secure: true,
     };
 
     res.status(200).cookie("token", token, options).json({
