@@ -22,6 +22,7 @@ const corsOptions = {
   exposedHeaders: ["Set-Cookie"],
 };
 app.use(cors(corsOptions));
+
 app.options("*", cors(corsOptions));
 app.use(express.json());
 app.use((req, res, next) => {
@@ -48,7 +49,6 @@ app.use((req, res, next) => {
 //   // Set to true if you need the website to include cookies in the requests sent
 //   // to the API (e.g. in case you use sessions)
 //   res.setHeader("Access-Control-Allow-Credentials", true);
-
 //   // Pass to next layer of middleware
 //   next();
 // });
