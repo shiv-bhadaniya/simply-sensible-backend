@@ -21,7 +21,7 @@ export const signin = async (req, res) => {
     const token = jwt.sign(
       { email: user.email, id: user._id, isAdmin: user.isAdmin },
       process.env.secretKey,
-      { expiresIn: "2 days" },
+      { expiresIn: "2 days" }
     );
 
     const sendingUserDetails = {
@@ -76,7 +76,7 @@ export const signup = async (req, res) => {
     const token = jwt.sign(
       { email: newUser.email, id: newUser._id, isAdmin: newUser.isAdmin },
       process.env.secretKey,
-      { expiresIn: "2 days" },
+      { expiresIn: "2 days" }
     );
 
     const sendingUserDetails = {
