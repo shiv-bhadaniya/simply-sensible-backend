@@ -1,173 +1,149 @@
 import express from "express";
-import moment from 'moment';
+import moment from "moment";
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";
 import nodemailer from "nodemailer";
-import {  sendOrderConfirmationMail } from "../util/sendMail.js";
-
-
+import { sendOrderConfirmationMail } from "../util/sendMail.js";
 
 const router = express.Router();
 
-
 export const getAllProducts = async (req, res) => {
-
-    try {
-        const allProducts = await Product.find();
-        res.status(200).json(allProducts)
-    } catch (error) {
-        res.json("Error");
-    }
-
-}
+  try {
+    const allProducts = await Product.find();
+    res.status(200).json(allProducts);
+  } catch (error) {
+    res.json("Error");
+  }
+};
 
 export const cartPriceCalulate = async (req, res) => {
+  const cartItems = req.body;
 
-    const cartItems = req.body;
+  try {
+    var cartItemsIds = [];
 
-    try {
-
-        var cartItemsIds = [];
-
-        // find all ides of cart items so we can perfom find 
-        for (let i = 0; i < cartItems.length; i++) {
-            let itemId = cartItems[i]._id;
-            cartItemsIds.push(itemId);
-        }
-
-        console.log("cartitem ids : ", cartItemsIds);
-
-
-        let dbProduct = await Product.find({
-            '_id': {
-                $in: cartItemsIds
-            }
-        });
-
-
-        if (dbProduct.length !== cartItems.length) {
-            throw new Error("Product not find.");
-        }
-
-        var subTotal = 0;
-
-
-        for (let i = 0; i < cartItems.length; i++) {
-            for (let j = 0; j < dbProduct.length; j++) {
-                if ((cartItems[i]._id) == (dbProduct[j]._id)) {
-                    let onItemPrice = (dbProduct[j].price * cartItems[i].quantity);
-                    subTotal = subTotal + onItemPrice;
-                }
-            }
-        }
-
-        var total = subTotal + 80;
-
-        console.log("calculate with db. Total with other charges :", total);
-
-        res.status(200).json(total);
-
-    } catch (error) {
-        res.json("Error");
+    // find all ides of cart items so we can perfom find
+    for (let i = 0; i < cartItems.length; i++) {
+      let itemId = cartItems[i]._id;
+      cartItemsIds.push(itemId);
     }
-}
+
+    console.log("cartitem ids : ", cartItemsIds);
+
+    let dbProduct = await Product.find({
+      _id: {
+        $in: cartItemsIds,
+      },
+    });
+
+    if (dbProduct.length !== cartItems.length) {
+      throw new Error("Product not find.");
+    }
+
+    var subTotal = 0;
+
+    for (let i = 0; i < cartItems.length; i++) {
+      for (let j = 0; j < dbProduct.length; j++) {
+        if (cartItems[i]._id == dbProduct[j]._id) {
+          let onItemPrice = dbProduct[j].price * cartItems[i].quantity;
+          subTotal = subTotal + onItemPrice;
+        }
+      }
+    }
+
+    var total = subTotal + 80;
+
+    console.log("calculate with db. Total with other charges :", total);
+
+    res.status(200).json(total);
+  } catch (error) {
+    res.json("Error");
+  }
+};
 
 export const newOrder = async (req, res) => {
+  const { shipingInfo, orderItems, totalAmount, paymetInfo } = req.body;
 
-    const {
-        shipingInfo,
-        orderItems,
-        totalAmount,
-        paymetInfo,
-    } = req.body;
+  const newOrder = new Order({
+    shipingInfo,
+    orderItems,
+    paymetInfo,
+    totalAmount,
+    paidAt: moment().format("MMM Do YYYY"),
+    customerId: req.user._id,
+    customerEmail: req.user.email,
+  });
 
-    const newOrder = new Order({
-        shipingInfo,
-        orderItems,
-        paymetInfo,
-        totalAmount,
-        paidAt: moment().format("MMM Do YYYY"),
-        customerId: req.user._id,
-        customerEmail: req.user.email,
-    })
+  try {
+    newOrder.save();
+    sendOrderConfirmationMail(newOrder);
 
-    try {
-        
-        newOrder.save();
-        sendOrderConfirmationMail(newOrder);
-
-        res.status(200).json({ newOrder })
-
-    } catch (error) {
-        res.json({ "message": "Something went wrong." });
-    }
-}
+    res.status(200).json({ newOrder });
+  } catch (error) {
+    res.json({ message: "Something went wrong." });
+  }
+};
 
 export const fetchAllUserOrders = async (req, res) => {
+  try {
+    let userId = req.user._id;
 
-    try {
-
-        let userId = req.user._id;
-
-        const userOrders = await Order.find({ user: userId });
-        if (userOrders.length !== 0) {
-            res.status(200).json(userOrders);
-        } else {
-            res.status(200).json("Not order yet.")
-        }
-    } catch (error) {
-        res.status(500).json("Something went wrog.")
+    const userOrders = await Order.find({ user: userId });
+    if (userOrders.length !== 0) {
+      res.status(200).json(userOrders);
+    } else {
+      res.status(200).json("Not order yet.");
     }
-}
+  } catch (error) {
+    res.status(500).json("Something went wrog.");
+  }
+};
 
 // new product review
 export const newProductReview = async (req, res) => {
+  const productId = req.params.productId;
+  const reviewData = req.body;
 
-    const productId = req.params.productId;
-    const reviewData = req.body;
+  try {
+    const updatedProductWithReviews = await Product.findByIdAndUpdate(
+      productId,
+      {
+        $push: {
+          reviews: {
+            rating: reviewData?.rating,
+            review: reviewData?.review,
+            user: {
+              userId: reviewData?.user?.userId,
+              name: reviewData?.user?.name,
+              email: reviewData?.user?.email,
+            },
+            date: moment().format("MMM Do YYYY"),
+          },
+        },
+      },
+      { new: true },
+    );
 
-
-    try {
-
-        const updatedProductWithReviews = await Product.findByIdAndUpdate(productId, {
-            $push: {
-                reviews: {
-                    "rating": reviewData?.rating,
-                    "review": reviewData?.review,
-                    user: {
-                        "userId": reviewData?.user?.userId,
-                        "name": reviewData?.user?.name,
-                        "email": reviewData?.user?.email,
-                    },
-                    "date": moment().format("MMM Do YYYY"),
-                }
-            }
-        }, { new: true });
-
-        const product = await Product.findById(productId);
-        res.status(200).json(product);
-
-    } catch (error) {
-        res.status(500).json("Something went wrong..");
-    }
-}
-
+    const product = await Product.findById(productId);
+    res.status(200).json(product);
+  } catch (error) {
+    res.status(500).json("Something went wrong..");
+  }
+};
 
 // get product details
 export const getProductDetails = async (req, res) => {
-
-    try {
-        const productId = req.params.productId;
-        const product = await Product.findById(productId);
-        if (product !== null) {
-            res.status(200).json(product);
-        } else {
-            res.status(200).json("we face problem while fetching product details.");
-        }
-
-    } catch (error) {
-        res.status(500).json("Something went wrong.");
+  try {
+    const productId = req.params.productId;
+    const product = await Product.findById(productId);
+    if (product !== null) {
+      res.status(200).json(product);
+    } else {
+      res.status(200).json("we face problem while fetching product details.");
     }
-}
+  } catch (error) {
+    res.status(500).json("Something went wrong.");
+  }
+};
 
 export default router;
