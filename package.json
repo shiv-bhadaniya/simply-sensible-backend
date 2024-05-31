@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon index.js"
+    "start": "prettier . --write && nodemon index.js"
   },
   "keywords": [],
   "author": "",
@@ -27,5 +27,8 @@
     "nodemailer": "^6.9.0",
     "nodemon": "^2.0.20",
     "stripe": "^15.5.0"
+  },
+  "devDependencies": {
+    "prettier": "3.2.5"
   }
 }
