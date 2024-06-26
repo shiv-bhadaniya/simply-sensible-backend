@@ -39,6 +39,19 @@ export const cartPriceCalulate = async (req, res) => {
     if (dbProduct.length !== cartItems.length) {
       throw new Error("Product not find.");
     }
+    // check stock availability
+    for (let i = 0; i < cartItems.length; i++) {
+      const product = dbProduct.find((p) => p._id == cartItems[i]._id);
+
+      if (product && product.stocks < cartItems[i].quantity) {
+        console.error(`Not enough stock for product ${product.name}`);
+        return res
+          .status(301)
+          .json(`Not enough stock for product ${product.name}`);
+      } else {
+        console.info("barabr stock availability...");
+      }
+    }
 
     var subTotal = 0;
 
@@ -57,7 +70,27 @@ export const cartPriceCalulate = async (req, res) => {
 
     res.status(200).json(total);
   } catch (error) {
-    res.json("Error");
+    res.status(500).json(error);
+  }
+};
+
+const updateStock = async (orderItems) => {
+  const bulkOperations = orderItems.map((item) => {
+    return {
+      updateOne: {
+        filter: { _id: item._id },
+        update: { $inc: { stocks: -item.quantity } },
+      },
+    };
+  });
+
+  try {
+    await Product.bulkWrite(bulkOperations);
+    console.log("Stock updated successfully");
+    return true;
+  } catch (error) {
+    console.error("Error updating stock:", error);
+    return false;
   }
 };
 
@@ -78,9 +111,15 @@ export const newOrder = async (req, res) => {
     newOrder.save();
     sendOrderConfirmationMail(newOrder);
 
+    const stockUpdated = await updateStock(orderItems);
+    if (!stockUpdated) {
+      throw new Error("Failed to update stock");
+    }
+
     res.status(200).json({ newOrder });
   } catch (error) {
-    res.json({ message: "Something went wrong." });
+    console.error("Error creating new order:", error);
+    res.json({ message: error });
   }
 };
 

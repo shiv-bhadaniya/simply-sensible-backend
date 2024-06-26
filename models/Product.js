@@ -14,6 +14,10 @@ const productShema = new mongoose.Schema({
     default: moment().format("MMM Do YYYY"),
   },
   reviews: [Object],
+  stocks: {
+    type: Number,
+    default: 50,
+  },
 });
 
 const Product = mongoose.model("Product", productShema);
