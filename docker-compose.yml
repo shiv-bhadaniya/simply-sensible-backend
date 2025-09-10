@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:6.0
+    container_name: ecommerce-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - ecommerce-network
+
+  # Authentication Service
+  auth-service:
+    build: ./services/auth-service
+    container_name: auth-service
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - DB_CONNECTION_URL=mongodb://admin:password123@mongodb:27017/auth-service?authSource=admin
+      - secretKey=your-super-secret-jwt-key-here
+      - FRONTEND_HOST=http://localhost:3000
+    depends_on:
+      - mongodb
+    networks:
+      - ecommerce-network
+
+  # Product Service
+  product-service:
+    build: ./services/product-service
+    container_name: product-service
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - DB_CONNECTION_URL=mongodb://admin:password123@mongodb:27017/product-service?authSource=admin
+      - FRONTEND_HOST=http://localhost:3000
+    depends_on:
+      - mongodb
+    networks:
+      - ecommerce-network
+
+  # Order Service
+  order-service:
+    build: ./services/order-service
+    container_name: order-service
+    restart: unless-stopped
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - DB_CONNECTION_URL=mongodb://admin:password123@mongodb:27017/order-service?authSource=admin
+      - PRODUCT_SERVICE_URL=http://product-service:3002
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3005
+      - FRONTEND_HOST=http://localhost:3000
+    depends_on:
+      - mongodb
+      - product-service
+      - notification-service
+    networks:
+      - ecommerce-network
+
+  # Payment Service
+  payment-service:
+    build: ./services/payment-service
+    container_name: payment-service
+    restart: unless-stopped
+    ports:
+      - "3004:3004"
+    environment:
+      - PORT=3004
+      - STRIPE_API_KEY=your-stripe-secret-key
+      - STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
+      - FRONTEND_HOST=http://localhost:3000
+    networks:
+      - ecommerce-network
+
+  # Notification Service
+  notification-service:
+    build: ./services/notification-service
+    container_name: notification-service
+    restart: unless-stopped
+    ports:
+      - "3005:3005"
+    environment:
+      - PORT=3005
+      - SENDGRID_API_KEY=your-sendgrid-api-key
+      - MAIL_FROM=noreply@simplysensible.in
+      - EMAIL_USER=your-gmail-username
+      - EMAIL_PASS=your-gmail-app-password
+      - FRONTEND_HOST=http://localhost:3000
+    networks:
+      - ecommerce-network
+
+  # API Gateway
+  api-gateway:
+    build: ./services/api-gateway
+    container_name: api-gateway
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - FRONTEND_HOST=http://localhost:3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - PRODUCT_SERVICE_URL=http://product-service:3002
+      - ORDER_SERVICE_URL=http://order-service:3003
+      - PAYMENT_SERVICE_URL=http://payment-service:3004
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3005
+      - NODE_ENV=development
+    depends_on:
+      - auth-service
+      - product-service
+      - order-service
+      - payment-service
+      - notification-service
+    networks:
+      - ecommerce-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  ecommerce-network:
+    driver: bridge
